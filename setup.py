@@ -18,7 +18,7 @@ setup(
     install_requires=['matplotlib>=3.7.2',
                       'networkx>=2.8.6',
                       'pandas>=2.0.3',
-                      'Requests>=2.32.3'
+                      'Requests>=2.32.3',
                       'scipy>=1.14.1',          
                       ],
     classifiers=[

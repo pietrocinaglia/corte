@@ -47,20 +47,23 @@ class CORTE:
             print( "***********************************************************" )
         pass
   
-    def __retrieve_data(self, action:str='geneExpression') -> pd.DataFrame:
+    def __retrieve_data(self, action:str='geneExpression', genes_of_interest=None) -> pd.DataFrame:
         result = None
+
+        if genes_of_interest is None:
+            genes_of_interest = self.genes_of_interest
         if action == 'geneExpression':
             api = "https://gtexportal.org/api/v2/expression/geneExpression"
-            params = {'itemsPerPage': 100000, 'datasetId': self.DATASETID, 'gencodeId': self.genes_of_interest, 'tissueSiteDetailId': self.tissues_of_interest, 'attributeSubset': 'ageBracket', 'format':'json'}
+            params = {'itemsPerPage': 100000, 'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'tissueSiteDetailId': self.tissues_of_interest, 'attributeSubset': 'ageBracket', 'format':'json'}
             result =  requests.get( api, params ).json()
         elif action == 'metasoft':
             api = "https://gtexportal.org/api/v2/association/metasoft"
-            params = {'datasetId': self.DATASETID, 'gencodeId': self.genes_of_interest, 'format':'json'}
+            params = {'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'format':'json'}
             result =  requests.get( api, params ).json()
             result = pd.DataFrame(result)
         elif action == 'metadata':
             api = "https://gtexportal.org/api/v2/reference/gene"
-            params = {'itemsPerPage': 100000, 'geneId': self.genes_of_interest}
+            params = {'itemsPerPage': 100000, 'geneId': genes_of_interest}
             result =  requests.get( api, params ).json()
         else:
             raise Exception("The action in Data Retrieving is not supported.")
@@ -69,40 +72,35 @@ class CORTE:
             result = pd.DataFrame(result["data"])
 
         return result
-
-    def __savefig(self, output_path:str = None):
-        # Print output
-        for i in range(len(self.temporal_network)):
-            tp = self.temporal_network[i]
-            if self.verbose == True:
-                print("Timepoint #" + str(i))
-                print(tp.nodes)
-                print(tp.edges(data=True))
-                print()
-            plt.savefig(output_path + 'tp' + str(i) + '.png')
-            plt.clf()
     
     def construct_temporal_network(self) -> list:
         if self.verbose == True:
             print("[INFO] Data Retrieving...")
         
-        genes_metadata = self.__retrieve_data(self.genes_of_interest, tissues_of_interest=self.tissues_of_interest, action='metadata')
+        genes_metadata = self.__retrieve_data(action='metadata', genes_of_interest=self.genes_of_interest)
         gencodeIds = genes_metadata['gencodeId'].values
         gene_symbol_id = {self.genes_of_interest[i]: gencodeIds[i] for i in range(len(self.genes_of_interest))}
+
         if self.verbose == True:
             print("- Metadata [OK] ")
-
-        df = self.__retrieve_data(gencodeIds, action='geneExpression')
+        print(gencodeIds)
+        df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
+        print(df)
         gene_pairs = list(combinations(gene_symbol_id, 2))
+
         if self.verbose == True:
             print("- Gene Expression Data [OK] ")
+            print()
 
         if self.verbose == True:
             print("[INFO] Temporal Network Construction...")
+
         temporal_network = list()
         for i in range(len(self.AGES)):
+
             if self.verbose == True:
                 print("- Time Point #" + str(i) + " (" + str(self.AGES[i]) + ") ...")
+
             timepoint = nx.Graph()
             timepoint.add_nodes_from( list(gene_symbol_id.keys()) )
 
@@ -131,7 +129,7 @@ class CORTE:
                     continue
 
                 s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
-                
+                print(p)
                 p = round(p, 5)
 
                 if p < self.threshold:
@@ -146,53 +144,27 @@ class CORTE:
 
         return temporal_network
     
-    def plot(self, with_labels:bool=True, savefig:str=None):
-        if len(self.temporal_network) == 0:
-            raise Exception("Temporal Network was not constructed; firtsly, you must call 'construct_temporal_network'.")
+    def plot(self, temporal_network:list, with_labels:bool=True, output_path:str=None):
+        if len(temporal_network) == 0:
+            raise Exception("Temporal Network is empty; firtsly, you must call 'construct_temporal_network'.")
 
-        # Print output
-        for i in range(len(self.temporal_network)):
-            tp = self.temporal_network[i]
-            if self.verbose == True:
-                print("Timepoint #" + str(i))
-                print(tp.nodes)
-                print(tp.edges(data=True))
-                print()
-                        
-            if savefig is not None:
-                self.__savefig(self, savefig)
-            
-            nx.draw(tp, with_labels)
-            plt.show()
-
-    #############
-    #############
-    #############
-    
-    def test(self, plot:bool=True, savefig:str=None):
-        self.genes_symbols = ['APBA1','APC','APH1B','BACE1','NOTCH1','PSEN2']#['ENSG00000141510.16', 'ENSG00000146648.17']
-        self.tissues_of_interest = ['Brain_Amygdala','Brain_Anterior_cingulate_cortex_BA24','Brain_Caudate_basal_ganglia','Brain_Cerebellar_Hemisphere','Brain_Cerebellum','Brain_Cortex','Brain_Frontal_Cortex_BA9','Brain_Hippocampus','Brain_Hypothalamus','Brain_Nucleus_accumbens_basal_ganglia','Brain_Putamen_basal_ganglia','Brain_Spinal_cord_cervical_c-1','Brain_Substantia_nigra']
-        print("################################################")
-        print("> TESTING <")
-        print("- Genes: " + str(self.genes_symbols))
-        print("- Tissues: " + str(self.tissues_of_interest))
-        print("################################################")
-        print()
-        # Data processing
-        temporal_network = self.construct_temporal_network()
         # Print output
         for i in range(len(temporal_network)):
             tp = temporal_network[i]
-            print("Timepoint #" + str(i))
-            print(tp.nodes)
-            print(tp.edges(data=True))
-            print()
-
-            if savefig is not None:
-                self.__savefig(self, savefig+'tp'+str(i)+'.png')
+            tp_title = "Timepoint #" + str(i)
+            if self.verbose == True:
+                print(tp_title)
+                print(tp.nodes)
+                print(tp.edges(data=True))
+                print()
             
-            if plot == True:
-                nx.draw(tp, with_labels=True)
-                plt.show()            
+            plt.figure()  
+            plt.title(tp_title)
 
-        print(">>> DONE <<<")
+            nx.draw(tp, with_labels=with_labels)
+
+            if output_path is not None:
+                plt.savefig(output_path + tp_title + '.png')
+                plt.clf()
+            else:
+                plt.show()
