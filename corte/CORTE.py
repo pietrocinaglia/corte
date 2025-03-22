@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import requests
 import networkx as nx
 import pandas as pd
@@ -16,11 +17,14 @@ import matplotlib.pyplot as plt
 ###
 
 class CORTE:
+    WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
     #
     AGES = ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
     UNIT = 'TPM'
     DATASETID = "gtex_v10"
     LIMIT = 100000 # Max is 100000
+    #
+    metadata = []
     #
     temporal_network = list()
     genes_of_interest = list()
@@ -30,20 +34,9 @@ class CORTE:
     verbose = False
     #
 
-    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, id_type:str='gene_code', verbose:bool=False):
+    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False):
         if len(genes_of_interest) == 0:
             raise Exception("Genes of interest ('genes_of_interest:list') are mandatory; this list cannot be empty or none.")
-
-        if id_type == 'gene_code' or id_type == 'gene_symbol':
-            pass
-        else:
-            raise Exception("id_type value is not supported, you can only use 'gene_code' or 'gene_symbol'.")
-    
-        self.genes_of_interest = genes_of_interest
-        self.id_type = id_type
-        self.tissues_of_interest = tissues_of_interest
-        self.threshold = threshold
-        self.verbose = verbose
 
         if self.verbose == True:
             print( "***********************************************************" )
@@ -54,6 +47,24 @@ class CORTE:
             print( "  GitHub:\t" + "https://github.com/pietrocinaglia/corte" )
             print( "  Contact:\tPietro Cinaglia (cinaglia@unicz.it)" )
             print( "***********************************************************" )
+            print()
+
+        print("[INFO] Loading metadata...")
+        
+        self.genes_of_interest = genes_of_interest
+        self.tissues_of_interest = tissues_of_interest
+        self.threshold = threshold
+        self.verbose = verbose
+
+        # reading metadata
+        df = pd.read_csv(self.WORKSPACE+'metadata.csv', header=0, sep = " ")
+        # filtering metadata
+        df = df[ df['gene_symbol'].isin(self.genes_of_interest) ]
+        # dataframe to dictionary
+        self.metadata = dict(zip(df.gene_symbol,df.ensembl_id))
+
+        print("- Metadata [OK] ")
+
         pass
   
     def __retrieve_data(self, action:str='geneExpression', genes_of_interest=None) -> pd.DataFrame:
@@ -66,8 +77,11 @@ class CORTE:
             api = "https://gtexportal.org/api/v2/expression/geneExpression"
             params = {'itemsPerPage': self.LIMIT, 'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'tissueSiteDetailId': self.tissues_of_interest, 'attributeSubset': 'ageBracket', 'format':'json'}
             result =  requests.get( api, params ).json()
-
-        elif action == 'metasoft':
+        else:
+            raise Exception("The action in Data Retrieving is not supported.")
+        
+        '''
+        if action == 'metasoft':
             api = "https://gtexportal.org/api/v2/association/metasoft"
             params = {'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'format':'json'}
             result =  requests.get( api, params ).json()
@@ -77,9 +91,7 @@ class CORTE:
             api = "https://gtexportal.org/api/v2/reference/gene"
             params = {'itemsPerPage': self.LIMIT, 'geneId': genes_of_interest}
             result =  requests.get( api, params ).json()
-
-        else:
-            raise Exception("The action in Data Retrieving is not supported.")
+        '''
         
         # Checking result
         if result is None:
@@ -90,21 +102,10 @@ class CORTE:
     def construct_temporal_network(self) -> list:
         if self.verbose == True:
             print("[INFO] Data Retrieving...")
-        
-        gencodeIds = None
-        if self.id_type == 'gene_symbol':
-            genes_metadata = self.__retrieve_data(action='metadata', genes_of_interest=self.genes_of_interest)
-            gencodeIds = genes_metadata['gencodeId'].values
-        elif self.id_type == 'gene_code':
-            gencodeIds = self.genes_of_interest # translation is not necessary
-        else:
-            raise Exception("id_type value is not supported, you can only use 'gene_code' or 'gene_symbol'.")
-        
-        gene_symbol_id = {self.genes_of_interest[i]: gencodeIds[i] for i in range(len(self.genes_of_interest))}
 
-        if self.verbose == True:
-            print("- Metadata [OK] ")
-        
+        gene_symbol_id = self.metadata
+        gencodeIds = list(self.metadata.values())
+
         df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
         
         gene_pairs = list(combinations(gene_symbol_id, 2))
