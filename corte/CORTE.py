@@ -19,20 +19,28 @@ class CORTE:
     #
     AGES = ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
     UNIT = 'TPM'
-    DATASETID = "gtex_v8"
+    DATASETID = "gtex_v10"
+    LIMIT = 100000 # Max is 100000
     #
     temporal_network = list()
     genes_of_interest = list()
+    id_type = 'gene_code' # 'gene_code' or 'gene_symbol'
     tissues_of_interest = list()
     threshold = 0.05
     verbose = False
     #
 
-    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False):
+    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, id_type:str='gene_code', verbose:bool=False):
         if len(genes_of_interest) == 0:
             raise Exception("Genes of interest ('genes_of_interest:list') are mandatory; this list cannot be empty or none.")
 
+        if id_type == 'gene_code' or id_type == 'gene_symbol':
+            pass
+        else:
+            raise Exception("id_type value is not supported, you can only use 'gene_code' or 'gene_symbol'.")
+    
         self.genes_of_interest = genes_of_interest
+        self.id_type = id_type
         self.tissues_of_interest = tissues_of_interest
         self.threshold = threshold
         self.verbose = verbose
@@ -42,6 +50,7 @@ class CORTE:
             print( " -----------" )
             print( " > CoRTE < " )
             print( " -----------" )
+            print( "  Version: 0.1" )
             print( "  GitHub:\t" + "https://github.com/pietrocinaglia/corte" )
             print( "  Contact:\tPietro Cinaglia (cinaglia@unicz.it)" )
             print( "***********************************************************" )
@@ -52,40 +61,52 @@ class CORTE:
 
         if genes_of_interest is None:
             genes_of_interest = self.genes_of_interest
+
         if action == 'geneExpression':
             api = "https://gtexportal.org/api/v2/expression/geneExpression"
-            params = {'itemsPerPage': 100000, 'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'tissueSiteDetailId': self.tissues_of_interest, 'attributeSubset': 'ageBracket', 'format':'json'}
+            params = {'itemsPerPage': self.LIMIT, 'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'tissueSiteDetailId': self.tissues_of_interest, 'attributeSubset': 'ageBracket', 'format':'json'}
             result =  requests.get( api, params ).json()
+
         elif action == 'metasoft':
             api = "https://gtexportal.org/api/v2/association/metasoft"
             params = {'datasetId': self.DATASETID, 'gencodeId': genes_of_interest, 'format':'json'}
             result =  requests.get( api, params ).json()
             result = pd.DataFrame(result)
+
         elif action == 'metadata':
             api = "https://gtexportal.org/api/v2/reference/gene"
-            params = {'itemsPerPage': 100000, 'geneId': genes_of_interest}
+            params = {'itemsPerPage': self.LIMIT, 'geneId': genes_of_interest}
             result =  requests.get( api, params ).json()
+
         else:
             raise Exception("The action in Data Retrieving is not supported.")
         
-        if result is not None:
-            result = pd.DataFrame(result["data"])
+        # Checking result
+        if result is None:
+            raise Exception("An error occurring in data retrieving.")
 
-        return result
+        return pd.DataFrame(result['data'])
     
     def construct_temporal_network(self) -> list:
         if self.verbose == True:
             print("[INFO] Data Retrieving...")
         
-        genes_metadata = self.__retrieve_data(action='metadata', genes_of_interest=self.genes_of_interest)
-        gencodeIds = genes_metadata['gencodeId'].values
+        gencodeIds = None
+        if self.id_type == 'gene_symbol':
+            genes_metadata = self.__retrieve_data(action='metadata', genes_of_interest=self.genes_of_interest)
+            gencodeIds = genes_metadata['gencodeId'].values
+        elif self.id_type == 'gene_code':
+            gencodeIds = self.genes_of_interest # translation is not necessary
+        else:
+            raise Exception("id_type value is not supported, you can only use 'gene_code' or 'gene_symbol'.")
+        
         gene_symbol_id = {self.genes_of_interest[i]: gencodeIds[i] for i in range(len(self.genes_of_interest))}
 
         if self.verbose == True:
             print("- Metadata [OK] ")
-        print(gencodeIds)
+        
         df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
-        print(df)
+        
         gene_pairs = list(combinations(gene_symbol_id, 2))
 
         if self.verbose == True:
@@ -105,6 +126,7 @@ class CORTE:
             timepoint.add_nodes_from( list(gene_symbol_id.keys()) )
 
             for u, v in gene_pairs:
+                
                 u_data = df.loc[ (df['gencodeId'] == gene_symbol_id[u]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == self.AGES[i]) ]
                 v_data = df.loc[ (df['gencodeId'] == gene_symbol_id[v]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == self.AGES[i]) ]
 
@@ -129,11 +151,11 @@ class CORTE:
                     continue
 
                 s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
-                print(p)
+                
                 p = round(p, 5)
 
                 if p < self.threshold:
-                    timepoint.add_edge(u,v, p=p)
+                    timepoint.add_edge(u,v, pvalue=p)
 
             temporal_network.append(timepoint)
             if self.verbose == True:
@@ -143,7 +165,7 @@ class CORTE:
             print("- Temporal Network built.")
 
         return temporal_network
-    
+
     def plot(self, temporal_network:list, with_labels:bool=True, output_path:str=None):
         if len(temporal_network) == 0:
             raise Exception("Temporal Network is empty; firtsly, you must call 'construct_temporal_network'.")
@@ -168,3 +190,16 @@ class CORTE:
                 plt.clf()
             else:
                 plt.show()
+
+    def save_as_files(self, temporal_network:list, output_path:str):
+        if len(temporal_network) == 0:
+            raise Exception("Temporal Network is empty; firtsly, you must call 'construct_temporal_network'.")
+        
+        if output_path is None:
+            raise Exception("You must provide an output path for storing data.")
+
+        # Store timepoints as file
+        for i in range(len(temporal_network)):
+            tp = temporal_network[i]
+            tp_title = "timepoint" + str(i)
+            nx.write_edgelist(tp, output_path+tp_title+'.txt', data=True)

@@ -7,7 +7,7 @@ It was also released on PyPi: https://pypi.org/project/corte
 
 ## Additional Information
 
-Age-related gene expression data is retrieved via Genotype-Tissue Expression (GTEx) API V2 (https://gtexportal.org)
+Age-related gene expression data is retrieved by Genotype-Tissue Expression (GTEx) API V2 (https://gtexportal.org)
 
 Time points were based on the following age ranges: ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
 
