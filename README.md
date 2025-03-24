@@ -2,8 +2,6 @@
 
 **CoRTE** is a python software package for constructing (real-world) temporal networks from age-related gene expression data.
 
-It was also released on PyPi: https://pypi.org/project/corte
-
 
 ## Additional Information
 
@@ -14,35 +12,37 @@ Time points were based on the following age ranges: ['20-29', '30-39', '40-49', 
 
 ## Table of Contents
 
-- [Installation](#installation)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 
-## Installation <a name="installation"></a>
-
-To get started with **CoRTE**, you have to install it via pip:
-
-```
-pip install corte
-```
 
 ## Getting Started <a name="getting-started"></a>
 
-To begin using CoRTE, follow these steps:
+To begin using CoRTE you have to follow these steps:
 
-1. Import the **CoRTE** class in your Python script:
+1. Install dependecies
 
 ```
-from CORTE import CORTE
+pip install -r requirements.txt
 ```
 
-2. Create an instance of **CoRTE**:
+2. Copy **CoRTE** class and import it into your code:
+
+- 2.1. Copy "corte" folder into your workspace.
+
+- 2.2. Import CoRTE in your code:
+
+```
+from corte import CORTE
+```
+
+3. Create an instance of **CoRTE**:
 
 ```
 corte = CORTE(genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False):
 ```
 
-3. Use the following methods:
+4. Use the following methods:
 
 - construct_temporal_network() -> list
 - plot(with_labels:bool=True, savefig:str=None)
