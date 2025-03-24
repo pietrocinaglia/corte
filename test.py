@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-from CORTE import CORTE
+
+from corte import CORTE
 
 ###
 # @author: Pietro Cinaglia
@@ -28,9 +29,10 @@ corte = CORTE(genes_of_interest, tissues_of_interest, verbose=True)
 temporal_network = corte.construct_temporal_network()
 
 # Plotting temporal network
-corte.plot(temporal_network, with_labels=True)
+#corte.plot(temporal_network, with_labels=True)
+
 # (or) Plotting temporal network and storing plots as image
-# corte.plot(temporal_network, with_labels=True, output_path=WORKSPACE))
+corte.plot(temporal_network, with_labels=True, output_path=WORKSPACE)
 
 # Storing temporal network by using snapshot-based representation as set of edgelist
 corte.save_as_files(temporal_network,output_path=WORKSPACE)

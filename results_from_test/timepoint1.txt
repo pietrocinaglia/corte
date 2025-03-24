@@ -1,0 +1,3 @@
+PSMD14 ATF7IP {'pvalue': 0.00719}
+PSMD14 PEBP1 {'pvalue': 1e-05}
+ATF7IP PEBP1 {'pvalue': 0.02609}
