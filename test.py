@@ -13,7 +13,7 @@ from corte import CORTE
 
 WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
 
-genes_of_interest = ['PSMD14', 'PEBP1', 'ITPKB', 'ATF7IP'] # + ['CCDC92','CCDC74B','ARL14EPL','CCDC74A','ARL14EP','ZNF883','MINPP1','ITPKC','ITPKA','ITPKB','IPMK']
+genes_of_interest = ['EWSR1','SMARCA4','DDB2','YAP1','PSMD14','PEBP1','ITPKB','ATF7IP']
 tissues_of_interest = ['Brain_Amygdala','Brain_Anterior_cingulate_cortex_BA24','Brain_Caudate_basal_ganglia','Brain_Cerebellar_Hemisphere','Brain_Cerebellum','Brain_Cortex','Brain_Frontal_Cortex_BA9','Brain_Hippocampus','Brain_Hypothalamus','Brain_Nucleus_accumbens_basal_ganglia','Brain_Putamen_basal_ganglia','Brain_Spinal_cord_cervical_c-1','Brain_Substantia_nigra']
 
 print("################################################")
