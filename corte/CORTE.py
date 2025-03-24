@@ -107,7 +107,7 @@ class CORTE:
         gencodeIds = list(self.metadata.values())
 
         df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
-        
+
         gene_pairs = list(combinations(gene_symbol_id, 2))
 
         if self.verbose == True:
@@ -139,7 +139,7 @@ class CORTE:
                     u_gexp = u_data.data.values[0]
                 else:
                     u_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in u_data.data ]
-
+                
                 v_gexp = list()
                 if len(v_data.data) == 1:
                     v_gexp = v_data.data.values[0]
@@ -150,15 +150,16 @@ class CORTE:
                     if self.verbose == True:
                         raise Warning("Size of sample less than 3; skipped.")
                     continue
-
-                s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
                 
+                s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
+
                 p = round(p, 5)
 
                 if p < self.threshold:
                     timepoint.add_edge(u,v, pvalue=p)
 
             temporal_network.append(timepoint)
+
             if self.verbose == True:
                 print("-- [OK]")
         
