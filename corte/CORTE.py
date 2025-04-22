@@ -9,6 +9,8 @@ import statistics
 from itertools import combinations
 import matplotlib.pyplot as plt
 
+import csv
+
 ###
 # @author: Pietro Cinaglia
 # @mail: cinaglia@unicz.it
@@ -43,7 +45,7 @@ class CORTE:
             print( " -----------" )
             print( " > CoRTE < " )
             print( " -----------" )
-            print( "  Version: 0.1" )
+            print( "  Version:\t0.1" )
             print( "  GitHub:\t" + "https://github.com/pietrocinaglia/corte" )
             print( "  Contact:\tPietro Cinaglia (cinaglia@unicz.it)" )
             print( "***********************************************************" )
@@ -117,19 +119,29 @@ class CORTE:
         if self.verbose == True:
             print("[INFO] Temporal Network Construction...")
 
+        '''
+        # Only for testing (1/2)
+        with open('statistics_result.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            field = ['gene1', 'gene2', 'age', 'pvalue', 'is_significative']
+            writer.writerow(field)
+        '''
+
         temporal_network = list()
         for i in range(len(self.AGES)):
 
             if self.verbose == True:
-                print("- Time Point #" + str(i) + " (" + str(self.AGES[i]) + ") ...")
+                print("- Time Point " + str(i+1) + " (" + str(self.AGES[i]) + ") ...")
 
             timepoint = nx.Graph()
             timepoint.add_nodes_from( list(gene_symbol_id.keys()) )
 
             for u, v in gene_pairs:
                 
-                u_data = df.loc[ (df['gencodeId'] == gene_symbol_id[u]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == self.AGES[i]) ]
-                v_data = df.loc[ (df['gencodeId'] == gene_symbol_id[v]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == self.AGES[i]) ]
+                age_group = self.AGES[i]
+
+                u_data = df.loc[ (df['gencodeId'] == gene_symbol_id[u]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == age_group) ]
+                v_data = df.loc[ (df['gencodeId'] == gene_symbol_id[v]) & (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & (df['unit'] == self.UNIT) & (df['subsetGroup'] == age_group) ]
 
                 if (u_data.empty or v_data.empty):
                     continue
@@ -154,9 +166,15 @@ class CORTE:
                 s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
 
                 p = round(p, 5)
-
                 if p < self.threshold:
                     timepoint.add_edge(u,v, pvalue=p)
+                
+                '''
+                # Only for testing (2/2)
+                with open('statistics_result.csv', 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow([u, v, age_group, p, ('yes' if p < self.threshold else 'no')])
+                '''
 
             temporal_network.append(timepoint)
 
@@ -175,7 +193,7 @@ class CORTE:
         # Print output
         for i in range(len(temporal_network)):
             tp = temporal_network[i]
-            tp_title = "Timepoint #" + str(i)
+            tp_title = "Timepoint " + str(i+1)
             if self.verbose == True:
                 print(tp_title)
                 print(tp.nodes)
@@ -188,7 +206,7 @@ class CORTE:
             nx.draw(tp, with_labels=with_labels)
 
             if output_path is not None:
-                plt.savefig(output_path + tp_title + '.png')
+                plt.savefig(output_path + tp_title + '.png', dpi=500)
                 plt.clf()
             else:
                 plt.show()
@@ -203,5 +221,5 @@ class CORTE:
         # Store timepoints as file
         for i in range(len(temporal_network)):
             tp = temporal_network[i]
-            tp_title = "timepoint" + str(i)
+            tp_title = "timepoint" + str(i+1)
             nx.write_edgelist(tp, output_path+tp_title+'.txt', data=True)
