@@ -43,33 +43,18 @@ for g_size in gene_sizes:
         if t_size < len(ALL_TISSUES):
             tissues = random.sample(ALL_TISSUES, t_size)
 
-        print(f" - Genes: {g_size}, Tissues: {t_size}...", end=" ", flush=True)
+        print(f" - Genes: {g_size}, Tissues: {t_size}...", end="\n", flush=True)
 
         runtime = time.time()
         corte = CORTE(genes_of_interest=genes, tissues_of_interest=tissues, threshold=0.05, metadata=metadata_df, verbose=False)
         network = corte.construct_temporal_network()
         runtime = round(time.time() - runtime, 4)
         results.append({'genes': g_size, 'tissues': t_size, 'runtime': runtime})
-        print(f" -- Runtime: {runtime}", end=" ", flush=True)
+        print(f" -- Runtime: {runtime}", end="\n", flush=True)
 
 print("[INFO] Saving results...")
 
 df_results = pd.DataFrame(results)
 df_results.to_csv(WORKSPACE+"performance_results.csv", index=False)
-
-print("[INFO] Plotting Heatmap...")
-
-pivot = df_results.pivot("genes", "tissues", "time")
-plt.figure(figsize=(8, 6))
-plt.title("Runtime (s)")
-heatmap = plt.imshow(pivot, cmap="viridis", aspect="auto", interpolation="nearest")
-plt.colorbar(heatmap, label="seconds")
-plt.xticks(ticks=range(len(pivot.columns)), labels=pivot.columns)
-plt.yticks(ticks=range(len(pivot.index)), labels=pivot.index)
-plt.xlabel("Number of Tissues")
-plt.ylabel("Number of Genes")
-plt.tight_layout()
-plt.savefig(WORKSPACE+"performance_heatmap.png", dpi=300)
-plt.show()
 
 print("[ DONE ]")
