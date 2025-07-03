@@ -23,18 +23,33 @@ print("- Tissues: " + str(tissues_of_interest))
 print("################################################")
 print()
 
-corte = CORTE(genes_of_interest, tissues_of_interest, verbose=True)
+# Instantiate
+corte = CORTE(
+    genes_of_interest=genes_of_interest,
+    tissues_of_interest=tissues_of_interest,
+    threshold=0.05,
+    verbose=True
+)
 
-# Data processing
+# Build temporal network
 temporal_network = corte.construct_temporal_network()
 
-# Plotting temporal network
-#corte.plot(temporal_network, with_labels=True)
+# Statistics concerning the temporal network
+stats = corte.analyze_temporal_network(temporal_network)
+print(stats)
 
-# (or) Plotting temporal network and storing plots as image
+# Extract top (n) genes
+top_genes = corte.extract_high_degree_genes(temporal_network, top_n=10)
+print(top_genes)
+
+# Plotting temporal network and storing plots as image
+# (if 'output_path' is defined, then each snapshot will be stored as image; it is not mandatory)
 corte.plot(temporal_network, with_labels=True, output_path=WORKSPACE)
 
-# Storing temporal network by using snapshot-based representation as set of edgelist
-corte.save_as_files(temporal_network,output_path=WORKSPACE)
+# Export temporal network as adjacency_matrices with pvalues (layer by layer)
+corte.export_adjacency_matrices(temporal_network, output_path=WORKSPACE)
+
+# Export temporal network by using snapshot-based representation as set of edgelist
+corte.export_snapshot_edgelist(temporal_network,output_path=WORKSPACE)
 
 print(">>> DONE <<<")
