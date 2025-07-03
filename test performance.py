@@ -5,7 +5,8 @@ import time
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import warnings
+warnings.simplefilter('ignore')
 ###
 # @author: Pietro Cinaglia
 # @mail: cinaglia@unicz.it
@@ -13,13 +14,13 @@ import matplotlib.pyplot as plt
 # @url: https://github.com/pietrocinaglia/corte
 ###
 
-WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
-
 from corte import CORTE
 
+WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
+
 # Define test parameters
-gene_sizes = [10, 50, 100, 200, 250, 350, 450, 500]  # Increase gene list size
-tissue_sizes = [54] # all (54) tissues
+gene_sizes = [50, 100, 250, 350, 450, 500]  # Increase gene list size
+tissue_sizes = [10, 25, 50] # (54) tissues
 
 # Load gene symbols
 metadata_df = pd.read_csv(WORKSPACE+'data/metadata.csv', sep=" ")
@@ -52,14 +53,13 @@ for g_size in gene_sizes:
         results.append({'genes': g_size, 'tissues': t_size, 'runtime': runtime})
         print(f" -- Runtime: {runtime}", end=" ", flush=True)
 
-# Save results to CSV
+print("[INFO] Saving results...")
+
 df_results = pd.DataFrame(results)
 df_results.to_csv(WORKSPACE+"performance_results.csv", index=False)
 
-print("[INFO] Storing data...")
+print("[INFO] Plotting Heatmap...")
 
-print("[INFO] Plotting...")
-# Plotting heatmap of results
 pivot = df_results.pivot("genes", "tissues", "time")
 plt.figure(figsize=(8, 6))
 plt.title("Runtime (s)")
