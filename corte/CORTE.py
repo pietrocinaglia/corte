@@ -10,8 +10,6 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
 
-import csv
-
 class CORTE:
     WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
     AGES = ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
@@ -21,12 +19,11 @@ class CORTE:
     metadata = []
     temporal_network = list()
     genes_of_interest = list()
-    id_type = 'gene_code'
     tissues_of_interest = list()
     threshold = 0.05
     verbose = False
 
-    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False):
+    def __init__(self, genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False, metadata:pd.DataFrame=None):
         if len(genes_of_interest) == 0:
             raise Exception("Genes of interest ('genes_of_interest:list') are mandatory.")
 
@@ -35,11 +32,14 @@ class CORTE:
         self.threshold = threshold
         self.verbose = verbose
 
-        print("[INFO] Loading metadata...")
-        df = pd.read_csv(self.WORKSPACE + 'metadata.csv', header=0, sep=" ")
-        df = df[df['gene_symbol'].isin(self.genes_of_interest)]
-        self.metadata = dict(zip(df.gene_symbol, df.ensembl_id))
-        print("- Metadata [OK] ")
+        if metadata:
+            self.metadata = metadata
+        else:
+            print("[INFO] Loading metadata...")
+            df = pd.read_csv(self.WORKSPACE + '../data/' + 'metadata.csv', header=0, sep=" ")
+            df = df[df['gene_symbol'].isin(self.genes_of_interest)]
+            self.metadata = dict(zip(df.gene_symbol, df.ensembl_id))
+            print("- Metadata [OK] ")
 
     def __retrieve_data(self, action='geneExpression', genes_of_interest=None) -> pd.DataFrame:
         if genes_of_interest is None:
@@ -62,33 +62,38 @@ class CORTE:
 
     def construct_temporal_network(self) -> list:
         if self.verbose:
-            print("[INFO] Data Retrieving...")
+            print("[INFO] Retrieving gene expression data...")
 
         gene_symbol_id = self.metadata
         gencodeIds = list(gene_symbol_id.values())
         df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
-
-        gene_pairs = list(combinations(gene_symbol_id, 2))
-        temporal_network = []
+        gene_pairs = list(combinations(gene_symbol_id.keys(), 2))
 
         if self.verbose:
-            print("[INFO] Temporal Network Construction...")
+            print("- Gene Expression Data [OK]\n")
+            print("[INFO] Constructing temporal layers...")
 
-        for i in range(len(self.AGES)):
-            age_group = self.AGES[i]
-            timepoint = nx.Graph()
-            timepoint.add_nodes_from(gene_symbol_id.keys())
+        def build_layer(age_group):
 
-            def compute_edge(u, v):
+            if self.verbose:
+                print(f"-- Processing layer: {age_group}")
+
+            layer = nx.Graph()
+            layer.add_nodes_from(gene_symbol_id.keys())
+
+            for u, v in gene_pairs:
                 u_data = df[(df['gencodeId'] == gene_symbol_id[u]) & 
-                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) &
+                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & 
                             (df['unit'] == self.UNIT) & 
                             (df['subsetGroup'] == age_group)]
 
                 v_data = df[(df['gencodeId'] == gene_symbol_id[v]) & 
-                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) &
+                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & 
                             (df['unit'] == self.UNIT) & 
                             (df['subsetGroup'] == age_group)]
+
+                if u_data.empty or v_data.empty:
+                    continue
 
                 u_gexp = list()
                 if len(u_data.data) == 1:
@@ -102,31 +107,29 @@ class CORTE:
                 else:
                     v_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in v_data.data ]
 
-                if ( len(u_gexp) < 3 or len(v_gexp) < 3):
-                    if self.verbose:
-                        raise Warning("Size of sample less than 3; skipped.")
-                    return None
+                if len(u_gexp) < 3 or len(v_gexp) < 3:
+                    continue
 
-                s, p = scipy.stats.pearsonr(u_gexp, v_gexp)
+                try:
+                    _, p = scipy.stats.pearsonr(u_gexp, v_gexp)
+                    if p < self.threshold:
+                        layer.add_edge(u, v, pvalue=round(p, 5))
+                except Exception:
+                    continue
 
-                return (u, v, p) if p < self.threshold else None
+            return layer
 
-            edges = Parallel(n_jobs=-1)(delayed(compute_edge)(u, v) for u, v in gene_pairs)
+        temporal_network = Parallel(n_jobs=-1)(
+            delayed(build_layer)(age_group) for age_group in self.AGES
+        )
 
-            for e in edges:
-                if e:
-                    u, v, p = e
-                    timepoint.add_edge(u, v, pvalue=p)
+        if self.verbose:
+            print("[INFO] Temporal network construction complete.")
 
-            temporal_network.append(timepoint)
-
-            if self.verbose:
-                print(f"-- Timepoint {age_group} built with {timepoint.number_of_edges()} edges.")
-
-        self.temporal_network = temporal_network
         return temporal_network
 
-    def analyze_temporal_network(self, temporal_network: list) -> pd.DataFrame:
+
+    def analyze_temporal_network(self, temporal_network: list, output_path:str=None) -> pd.DataFrame:
         all_stats = []
         previous_stats = None  # For computing deltas
 
@@ -200,16 +203,14 @@ class CORTE:
             previous_stats = stats.copy()
             all_stats.append(stats)
 
-        return pd.DataFrame(all_stats)
+        output = pd.DataFrame(all_stats)
+
+        if output_path:
+            output.to_csv(output_path+"stats.csv")  
+        return 
 
 
     def extract_high_degree_genes(self, temporal_network: list, top_n: int = 10) -> dict:
-        """
-        Extracts the top-N genes with the highest degree for each timepoint.
-
-        Returns:
-            dict: { 'age_group': [(gene, degree), ...] }
-        """
         top_genes = {}
 
         for i, G in enumerate(temporal_network):
@@ -229,7 +230,7 @@ class CORTE:
         for i, G in enumerate(temporal_network):
             nodes = list(G.nodes())
             # Create adjacency matrix weighted by 'pvalue'
-            adj = nx.to_pandas_adjacency(G, nodelist=nodes, weight='pvalue')#.fillna(nan) # if missing edges (NaN) have to replaced,e.g., with nan (input value)
+            adj = nx.to_pandas_adjacency(G, nodelist=nodes, weight='pvalue', nonedge=-1) # non-edge are set to -1
             filename = os.path.join(output_path, f"adjacency_timepoint_{i+1}.csv")
             adj.to_csv(filename)
 
