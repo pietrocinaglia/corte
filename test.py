@@ -44,12 +44,12 @@ print(top_genes)
 
 # Plotting temporal network and storing plots as image
 # (if 'output_path' is defined, then each snapshot will be stored as image; it is not mandatory)
-corte.plot(temporal_network, with_labels=True, output_path=WORKSPACE)
+corte.plot(temporal_network, with_labels=True)#, output_path=WORKSPACE)
 
 # Export temporal network as adjacency_matrices with pvalues (layer by layer)
 corte.export_adjacency_matrices(temporal_network, output_path=WORKSPACE)
 
 # Export temporal network by using snapshot-based representation as set of edgelist
-corte.export_snapshot_edgelist(temporal_network,output_path=WORKSPACE)
+corte.save_as_files(temporal_network,output_path=WORKSPACE)
 
 print(">>> DONE <<<")

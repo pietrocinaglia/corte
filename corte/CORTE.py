@@ -225,12 +225,12 @@ class CORTE:
         return top_genes
 
 
-    def export_adjacency_matrices_with_pvalue(self, temporal_network: list, output_path: str):
+    def export_adjacency_matrices(self, temporal_network: list, output_path: str):#, nan: int= 1):
         for i, G in enumerate(temporal_network):
             nodes = list(G.nodes())
-            # Create adjacency matrix weighted by 'pvalue'; missing edges get 1
-            adj = nx.to_pandas_adjacency(G, nodelist=nodes, weight='pvalue').fillna(1)
-            filename = os.path.join(output_path, f"adjacency_timepoint_{self.AGES[i]}.csv")
+            # Create adjacency matrix weighted by 'pvalue'
+            adj = nx.to_pandas_adjacency(G, nodelist=nodes, weight='pvalue')#.fillna(nan) # if missing edges (NaN) have to replaced,e.g., with nan (input value)
+            filename = os.path.join(output_path, f"adjacency_timepoint_{i+1}.csv")
             adj.to_csv(filename)
 
 
