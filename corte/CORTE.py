@@ -9,6 +9,8 @@ import statistics
 from itertools import combinations
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
+import warnings
+warnings.simplefilter('ignore')
 
 class CORTE:
     WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
@@ -31,14 +33,16 @@ class CORTE:
         self.tissues_of_interest = tissues_of_interest
         self.threshold = threshold
         self.verbose = verbose
-
-        if metadata:
+        
+        if self.verbose:
+            print("[INFO] Loading metadata...")
+        if metadata is not None:
             self.metadata = metadata
         else:
-            print("[INFO] Loading metadata...")
-            df = pd.read_csv(self.WORKSPACE + '../data/' + 'metadata.csv', header=0, sep=" ")
-            df = df[df['gene_symbol'].isin(self.genes_of_interest)]
-            self.metadata = dict(zip(df.gene_symbol, df.ensembl_id))
+            metadata = pd.read_csv(self.WORKSPACE + '../data/' + 'metadata.csv', header=0, sep=" ")
+        metadata = metadata[metadata['gene_symbol'].isin(self.genes_of_interest)]
+        self.metadata = dict(zip(metadata.gene_symbol, metadata.ensembl_id))
+        if self.verbose:
             print("- Metadata [OK] ")
 
     def __retrieve_data(self, action='geneExpression', genes_of_interest=None) -> pd.DataFrame:

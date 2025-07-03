@@ -5,8 +5,7 @@ import time
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
-import warnings
-warnings.simplefilter('ignore')
+
 ###
 # @author: Pietro Cinaglia
 # @mail: cinaglia@unicz.it
@@ -19,7 +18,7 @@ from corte import CORTE
 WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
 
 # Define test parameters
-gene_sizes = [50, 100, 250, 350, 450, 500]  # Increase gene list size
+gene_sizes = [50, 100, 250]  # Increase gene list size
 tissue_sizes = [10, 25, 50] # (54) tissues
 
 # Load gene symbols
@@ -47,7 +46,7 @@ for g_size in gene_sizes:
         print(f" - Genes: {g_size}, Tissues: {t_size}...", end=" ", flush=True)
 
         runtime = time.time()
-        corte = CORTE(genes_of_interest=genes, tissues_of_interest=tissues, threshold=0.05, verbose=False)
+        corte = CORTE(genes_of_interest=genes, tissues_of_interest=tissues, threshold=0.05, metadata=metadata_df, verbose=False)
         network = corte.construct_temporal_network()
         runtime = round(time.time() - runtime, 4)
         results.append({'genes': g_size, 'tissues': t_size, 'runtime': runtime})
