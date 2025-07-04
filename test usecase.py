@@ -42,10 +42,10 @@ top_genes = corte.extract_high_degree_genes(temporal_network, top_n=10)
 print(top_genes)
 
 # Export temporal network as adjacency_matrices with pvalues (layer by layer)
-corte.export_adjacency_matrices(temporal_network, output_path=WORKSPACE+'results_from_test/')
+#corte.export_adjacency_matrices(temporal_network, output_path=WORKSPACE+'results_from_test/')
 
 # Export temporal network by using snapshot-based representation as set of edgelist
-corte.save_as_files(temporal_network,output_path=WORKSPACE+'results_from_test/')
+# corte.save_as_files(temporal_network,output_path=WORKSPACE+'results_from_test/')
 
 # Plotting temporal network and storing plots as image
 # (if 'output_path' is defined, then each snapshot will be stored as image; it is not mandatory)

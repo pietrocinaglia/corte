@@ -4,18 +4,19 @@ import os
 import requests
 import networkx as nx
 import pandas as pd
+import networkx as nx
 import scipy
 import statistics
 from itertools import combinations
-import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
-import warnings
-warnings.simplefilter('ignore')
+import matplotlib.pyplot as plt
+
+#import warnings
+#warnings.simplefilter('ignore')
 
 class CORTE:
     WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
     AGES = ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
-    UNIT = 'TPM'
     DATASETID = "gtex_v10"
     LIMIT = 100000
     metadata = []
@@ -45,7 +46,7 @@ class CORTE:
         if self.verbose:
             print("- Metadata [OK] ")
 
-    def __retrieve_data(self, action='geneExpression', genes_of_interest=None) -> pd.DataFrame:
+    def _retrieve_data(self, action='geneExpression', genes_of_interest=None) -> pd.DataFrame:
         if genes_of_interest is None:
             genes_of_interest = self.genes_of_interest
 
@@ -64,67 +65,67 @@ class CORTE:
         else:
             raise Exception("The action in Data Retrieving is not supported.")
 
+    def _build_layer(self, age_group, df, gene_symbols, gene_pairs):
+        if self.verbose:
+            print(f"-- Processing layer: {age_group}")
+
+        layer = nx.Graph()
+        layer.add_nodes_from(gene_symbols)
+
+        df = df[(df['subsetGroup'] == age_group)]
+        
+        for u, v in gene_pairs:
+            u_data = df[(df['geneSymbol'] == u)]
+
+            v_data = df[(df['geneSymbol'] == v)]
+
+            if u_data.empty or v_data.empty:
+                continue
+
+            u_gexp = list()
+            if len(u_data.data) == 1:
+                u_gexp = u_data.data.values[0]
+            else:
+                u_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in u_data.data ]
+            
+            v_gexp = list()
+            if len(v_data.data) == 1:
+                v_gexp = v_data.data.values[0]
+            else:
+                v_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in v_data.data ]
+
+            if len(u_gexp) < 3 or len(v_gexp) < 3:
+                continue
+
+            try:
+                _, p = scipy.stats.pearsonr(u_gexp, v_gexp)
+                if p < self.threshold:
+                    layer.add_edge(u, v, pvalue=round(p, 5))
+            except Exception:
+                continue
+
+        return layer
+
+
     def construct_temporal_network(self) -> list:
         if self.verbose:
             print("[INFO] Retrieving gene expression data...")
 
-        gene_symbol_id = self.metadata
-        gencodeIds = list(gene_symbol_id.values())
-        df = self.__retrieve_data(action='geneExpression', genes_of_interest=gencodeIds)
-        gene_pairs = list(combinations(gene_symbol_id.keys(), 2))
+        gene_code_ids = list(self.metadata.values())
+        gene_symbols = list(self.metadata.keys())
+        
+        # Retriving data from GTEx via APIv2
+        df = self._retrieve_data(genes_of_interest=gene_code_ids)
+        df = df[(df['tissueSiteDetailId'].isin(self.tissues_of_interest))]
+
+        gene_pairs = list(combinations(gene_symbols, 2))
 
         if self.verbose:
             print("- Gene Expression Data [OK]\n")
             print("[INFO] Constructing temporal layers...")
 
-        def build_layer(age_group):
-
-            if self.verbose:
-                print(f"-- Processing layer: {age_group}")
-
-            layer = nx.Graph()
-            layer.add_nodes_from(gene_symbol_id.keys())
-
-            for u, v in gene_pairs:
-                u_data = df[(df['gencodeId'] == gene_symbol_id[u]) & 
-                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & 
-                            (df['unit'] == self.UNIT) & 
-                            (df['subsetGroup'] == age_group)]
-
-                v_data = df[(df['gencodeId'] == gene_symbol_id[v]) & 
-                            (df['tissueSiteDetailId'].isin(self.tissues_of_interest)) & 
-                            (df['unit'] == self.UNIT) & 
-                            (df['subsetGroup'] == age_group)]
-
-                if u_data.empty or v_data.empty:
-                    continue
-
-                u_gexp = list()
-                if len(u_data.data) == 1:
-                    u_gexp = u_data.data.values[0]
-                else:
-                    u_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in u_data.data ]
-                
-                v_gexp = list()
-                if len(v_data.data) == 1:
-                    v_gexp = v_data.data.values[0]
-                else:
-                    v_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in v_data.data ]
-
-                if len(u_gexp) < 3 or len(v_gexp) < 3:
-                    continue
-
-                try:
-                    _, p = scipy.stats.pearsonr(u_gexp, v_gexp)
-                    if p < self.threshold:
-                        layer.add_edge(u, v, pvalue=round(p, 5))
-                except Exception:
-                    continue
-
-            return layer
-
-        temporal_network = Parallel(n_jobs=-1)(
-            delayed(build_layer)(age_group) for age_group in self.AGES
+        temporal_network = Parallel(n_jobs=-1, verbose=3)(
+            delayed(self._build_layer)(age_group, df, gene_symbols, gene_pairs) for age_group in self.AGES
         )
 
         if self.verbose:
