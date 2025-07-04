@@ -116,7 +116,7 @@ def plot_scalability(df):
 
 # --- Main runner ---
 if __name__ == "__main__":
-    gene_sizes = [50, 100, 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000]
+    gene_sizes = [50, 100, 250, 500, 1000]
 
     results_df = benchmark_construct_temporal_network(
         gene_counts=gene_sizes,
