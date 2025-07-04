@@ -20,6 +20,7 @@ class CORTE:
     DATASETID = "gtex_v10"
     LIMIT = 100000
     metadata = []
+    gtex_data = None
     temporal_network = list()
     genes_of_interest = list()
     tissues_of_interest = list()
@@ -65,6 +66,20 @@ class CORTE:
         else:
             raise Exception("The action in Data Retrieving is not supported.")
 
+    def _extract_expression_values(self, gene_data):
+
+        if len(gene_data) == 1:
+            values = gene_data.data.values[0]
+            return values if isinstance(values, list) else [values]
+
+        values = []
+        for gexp in gene_data.data:
+            if isinstance(gexp, list) and len(gexp) > 0:
+                values.append(statistics.median(gexp))
+            else:
+                values.append(0)
+        return values
+
     def _build_layer(self, age_group, df, gene_symbols, gene_pairs):
         if self.verbose:
             print(f"-- Processing layer: {age_group}")
@@ -76,23 +91,13 @@ class CORTE:
         
         for u, v in gene_pairs:
             u_data = df[(df['geneSymbol'] == u)]
-
             v_data = df[(df['geneSymbol'] == v)]
 
             if u_data.empty or v_data.empty:
                 continue
 
-            u_gexp = list()
-            if len(u_data.data) == 1:
-                u_gexp = u_data.data.values[0]
-            else:
-                u_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in u_data.data ]
-            
-            v_gexp = list()
-            if len(v_data.data) == 1:
-                v_gexp = v_data.data.values[0]
-            else:
-                v_gexp = [ statistics.median(gexp_i) if len(gexp_i) > 0 else 0 for gexp_i in v_data.data ]
+            u_gexp = self._extract_expression_values(u_data)
+            v_gexp = self._extract_expression_values(v_data)
 
             if len(u_gexp) < 3 or len(v_gexp) < 3:
                 continue
@@ -115,8 +120,10 @@ class CORTE:
         gene_symbols = list(self.metadata.keys())
         
         # Retriving data from GTEx via APIv2
-        df = self._retrieve_data(genes_of_interest=gene_code_ids)
-        df = df[(df['tissueSiteDetailId'].isin(self.tissues_of_interest))]
+        if self.gtex_data is None:
+            df = self._retrieve_data(genes_of_interest=gene_code_ids)
+            df = df[(df['tissueSiteDetailId'].isin(self.tissues_of_interest))]
+            self.gtex_data = df
 
         gene_pairs = list(combinations(gene_symbols, 2))
 
@@ -124,8 +131,8 @@ class CORTE:
             print("- Gene Expression Data [OK]\n")
             print("[INFO] Constructing temporal layers...")
 
-        temporal_network = Parallel(n_jobs=-1, verbose=3)(
-            delayed(self._build_layer)(age_group, df, gene_symbols, gene_pairs) for age_group in self.AGES
+        temporal_network = Parallel(n_jobs=-1, backend="multiprocessing")(
+            delayed(self._build_layer)(age_group, self.gtex_data, gene_symbols, gene_pairs) for age_group in self.AGES
         )
 
         if self.verbose:
@@ -212,7 +219,8 @@ class CORTE:
 
         if output_path:
             output.to_csv(output_path+"stats.csv")  
-        return 
+
+        return output
 
 
     def extract_high_degree_genes(self, temporal_network: list, top_n: int = 10) -> dict:
