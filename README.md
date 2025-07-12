@@ -12,11 +12,15 @@ Time points were based on the following age ranges: ['20-29', '30-39', '40-49', 
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
+- [Installation](#installation)
 - [Usage](#usage)
+-- [Constructing a Temporal Network from age-related gene expression data](#constructing)
+-- [Plotting](#plotting)
+-- [Resuts](#results)
+- [License](#license)
 
 
-## Getting Started <a name="getting-started"></a>
+## Installation <a name="installation"></a>
 
 To begin using CoRTE you have to follow these steps:
 
@@ -57,14 +61,15 @@ Additionally, the following method for testing was implemented:
 
 You can choose the method that best suits your data and use case.
 
-### Constructing a Temporal Network from age-related gene expression data
+
+# Constructing a Temporal Network from age-related gene expression data <a name="constructing"></a>
 
 ```
 corte = CORTE(genes_of_interest:list, tissues_of_interest:list, threshold:float=0.05, verbose:bool=False):
 temporal_network = corte.construct_temporal_network(self)
 ```
 
-### Plotting the temporal network (previously constructed)
+# Plotting the temporal network <a name="plotting"></a>
 
 'output_path' is the path where files will be saved.
 Note that if 'savefig' is None, temporal network will only be shown.
@@ -74,7 +79,12 @@ corte.plot(with_labels:True, savefig=output_path)
 ```
 
 
-### License
+## Results <a name="results"></a>
+
+The 'results_from_tests' folder contains the results from tests conducted in our own experimentation and discussed in the academic article related to CoRTE
+
+
+### License <a name="license"></a>
 
 MIT License - Copyright (c) Pietro Cinaglia
 
