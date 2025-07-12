@@ -5,24 +5,23 @@ import matplotlib.pyplot as plt
 import os
 from memory_profiler import memory_usage # pip install memory-profiler
 
+#############
+
 from corte import CORTE
 
 WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
 
-#############
-
-# --- Fake data generator ---
+# --- Fake data generator (simulate REST API invocation)--- 
 def generate_fake_expression_data(num_genes, num_tissues, num_samples=10):
     import numpy as np
     import pandas as pd
 
-    # Create fake gene symbols
+    # Fake arguments
     gene_symbols = [f"gene_{i}" for i in range(num_genes)]
-
-    # Fake tissues
     tissues = [f"tissue_{i}" for i in range(num_tissues)]
 
-    # Create a dataframe with columns: geneSymbol, tissueSiteDetailId, subsetGroup (age), data
+    # Create a dataframe in accordance with real-world data provided by GTEx
+    # -- columns: geneSymbol, tissueSiteDetailId, subsetGroup (age), data
     data_rows = []
     age_groups = ['20-29', '30-39', '40-49']
 
@@ -42,8 +41,8 @@ def generate_fake_expression_data(num_genes, num_tissues, num_samples=10):
     return df, gene_symbols, tissues
 
 
-# --- Benchmark function ---
-def benchmark_construct_temporal_network(gene_counts, num_tissues, threshold=0.05, max_genes=10000, output_csv=None):
+# --- Benchmark ---
+def benchmark_construct_temporal_network(gene_counts, num_tissues, threshold=0.05, max_genes=10000):
     results = []
 
     for num_genes in gene_counts:
@@ -57,7 +56,7 @@ def benchmark_construct_temporal_network(gene_counts, num_tissues, threshold=0.0
             "ensembl_id": [f"ENSG{i:09d}" for i in range(num_genes)]
         })
 
-        # Monkey-patch retrieval with fake data
+        # Retrieving fake data
         df, gene_symbols, tissues = generate_fake_expression_data(num_genes, num_tissues)
 
         corte = CORTE(
@@ -89,13 +88,10 @@ def benchmark_construct_temporal_network(gene_counts, num_tissues, threshold=0.0
         })
 
     df = pd.DataFrame(results)
-    if output_csv:
-        df.to_csv(output_csv, index=False)
-        print(f"[INFO] Results saved to {output_csv}")
 
     return df
 
-# --- Plotting function ---
+# --- Plotting ---
 def plot_scalability(df):
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
@@ -109,19 +105,25 @@ def plot_scalability(df):
     ax2.plot(df["num_genes"], df["memory_mb"], color="red", marker="x", label="Memory")
     ax2.tick_params(axis="y", labelcolor="red")
 
-    plt.title("CORTE Scalability Benchmark")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
-# --- Main runner ---
+# --- Main ---
 if __name__ == "__main__":
-    gene_sizes = [50, 100, 250, 500, 1000]
-
+    gene_sizes = [50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000]
+    output_csv=WORKSPACE+"benchmark_results.csv"
+    
     results_df = benchmark_construct_temporal_network(
         gene_counts=gene_sizes,
-        num_tissues=10,
-        output_csv=WORKSPACE+"benchmark_results.csv"
+        num_tissues=1, # the unit has been defined equal to one tissue
     )
 
+    print("[INFO] Saving the results as file...")
+    results_df.to_csv(output_csv, index=False)
+    print(f"-- data saved to {output_csv}")
+
+    print("[INFO] Plotting...")
     plot_scalability(results_df)
+
+    print("[ DONE ]")
