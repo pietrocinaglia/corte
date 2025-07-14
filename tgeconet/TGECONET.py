@@ -14,7 +14,14 @@ import matplotlib.pyplot as plt
 #import warnings
 #warnings.simplefilter('ignore')
 
-class CORTE:
+###
+# @author: Pietro Cinaglia
+# @mail: cinaglia@unicz.it
+# @description: tGeCoNet: a framework for constructing (t)emporal (Ge)ne (Co)-expression (Net)works
+# @url: https://github.com/pietrocinaglia/tgeconet
+###
+
+class TGECONET:
     WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
     AGES = ['20-29', '30-39', '40-49', '50-59', '60-69', '70-79']
     DATASETID = "gtex_v10"

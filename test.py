@@ -2,13 +2,13 @@
 
 import os
 
-from corte import CORTE
+from tgeconet import TGECONET
 
 ###
 # @author: Pietro Cinaglia
 # @mail: cinaglia@unicz.it
-# @description: An open source and user-friendly tool for COnstructing Real-world TEmporal networks from genotype-tissue expression data (CoRTE)
-# @url: https://github.com/pietrocinaglia/corte
+# @description: tGeCoNet: a framework for constructing (t)emporal (Ge)ne (Co)-expression (Net)works
+# @url: https://github.com/pietrocinaglia/tgeconet
 ###
 
 WORKSPACE = os.path.dirname(os.path.realpath(__file__)) + "/"
@@ -24,7 +24,7 @@ print("################################################")
 print()
 
 # Instantiate
-corte = CORTE(
+tgeconet = TGECONET(
     genes_of_interest=genes_of_interest,
     tissues_of_interest=tissues_of_interest,
     threshold=0.05,
@@ -32,23 +32,23 @@ corte = CORTE(
 )
 
 # Build temporal network
-temporal_network = corte.construct_temporal_network()
+temporal_network = tgeconet.construct_temporal_network()
 
 # Statistics concerning the temporal network
-stats = corte.analyze_temporal_network(temporal_network, output_path=WORKSPACE+'results_from_test/')
+stats = tgeconet.analyze_temporal_network(temporal_network, output_path=WORKSPACE+'results_from_test/')
 
 # Extract top (n) genes
-top_genes = corte.extract_high_degree_genes(temporal_network, top_n=10)
+top_genes = tgeconet.extract_high_degree_genes(temporal_network, top_n=10)
 print(top_genes)
 
 # Export temporal network as adjacency_matrices with pvalues (layer by layer)
-#corte.export_adjacency_matrices(temporal_network, output_path=WORKSPACE+'results_from_test/')
+#tgeconet.export_adjacency_matrices(temporal_network, output_path=WORKSPACE+'results_from_test/')
 
 # Export temporal network by using snapshot-based representation as set of edgelist
-# corte.save_as_files(temporal_network,output_path=WORKSPACE+'results_from_test/')
+# tgeconet.save_as_files(temporal_network,output_path=WORKSPACE+'results_from_test/')
 
 # Plotting temporal network and storing plots as image
 # (if 'output_path' is defined, then each snapshot will be stored as image; it is not mandatory)
-corte.plot(temporal_network, with_labels=True) #, output_path=WORKSPACE)
+tgeconet.plot(temporal_network, with_labels=True) #, output_path=WORKSPACE)
 
 print(">>> DONE <<<")
